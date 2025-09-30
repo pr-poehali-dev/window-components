@@ -38,6 +38,8 @@ export default function Index() {
   const [activeTab, setActiveTab] = useState("catalog");
   const [calcQuantity, setCalcQuantity] = useState<number>(1);
   const [calcProduct, setCalcProduct] = useState<number>(1);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const { toast } = useToast();
 
   const addToCart = (product: Product) => {
@@ -78,9 +80,26 @@ export default function Index() {
   };
 
   const categoryNames: Record<string, string> = {
+    all: "Все товары",
     seals: "Уплотнители",
     sills: "Подоконники",
     panels: "Панели ПВХ",
+  };
+
+  const getFilteredProducts = () => {
+    let filtered = products;
+    
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter(p => p.category === selectedCategory);
+    }
+    
+    if (searchQuery) {
+      filtered = filtered.filter(p => 
+        p.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    
+    return filtered;
   };
 
   return (
@@ -121,36 +140,91 @@ export default function Index() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="catalog" className="space-y-8">
-            {Object.entries(categoryNames).map(([category, title]) => (
-              <div key={category}>
-                <h2 className="text-2xl font-bold mb-4 text-foreground">{title}</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {products.filter(p => p.category === category).map(product => (
-                    <Card key={product.id} className="hover:shadow-lg transition-shadow">
-                      <CardHeader>
-                        <div className="text-6xl text-center mb-4">{product.image}</div>
-                        <CardTitle className="text-lg">{product.name}</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex justify-between items-center mb-4">
-                          <span className="text-2xl font-bold text-primary">
-                            {product.price} ₽
-                          </span>
-                          <span className="text-muted-foreground">за {product.unit}</span>
-                        </div>
-                        <Button 
-                          onClick={() => addToCart(product)}
-                          className="w-full"
-                        >
-                          В корзину
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
+          <TabsContent value="catalog" className="space-y-6">
+            <div className="flex flex-col md:flex-row gap-4 mb-6">
+              <div className="flex-1">
+                <Label htmlFor="search" className="mb-2 block">Поиск товаров</Label>
+                <div className="relative">
+                  <Icon name="Search" size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="search"
+                    type="text"
+                    placeholder="Введите название товара..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
               </div>
-            ))}
+              <div className="md:w-64">
+                <Label htmlFor="category-filter" className="mb-2 block">Категория</Label>
+                <select
+                  id="category-filter"
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md bg-white"
+                >
+                  {Object.entries(categoryNames).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-muted-foreground">
+                Найдено товаров: <span className="font-semibold text-foreground">{getFilteredProducts().length}</span>
+              </p>
+              {(searchQuery || selectedCategory !== "all") && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setSelectedCategory("all");
+                  }}
+                >
+                  <Icon name="X" size={16} className="mr-2" />
+                  Сбросить фильтры
+                </Button>
+              )}
+            </div>
+
+            {getFilteredProducts().length === 0 ? (
+              <div className="text-center py-12">
+                <Icon name="SearchX" size={64} className="mx-auto text-muted-foreground mb-4" />
+                <p className="text-xl text-muted-foreground">Товары не найдены</p>
+                <p className="text-muted-foreground mt-2">Попробуйте изменить параметры поиска</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {getFilteredProducts().map(product => (
+                  <Card key={product.id} className="hover:shadow-lg transition-shadow">
+                    <CardHeader>
+                      <div className="text-6xl text-center mb-4">{product.image}</div>
+                      <CardTitle className="text-lg">{product.name}</CardTitle>
+                      <Badge variant="secondary" className="w-fit">
+                        {categoryNames[product.category]}
+                      </Badge>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex justify-between items-center mb-4">
+                        <span className="text-2xl font-bold text-primary">
+                          {product.price} ₽
+                        </span>
+                        <span className="text-muted-foreground">за {product.unit}</span>
+                      </div>
+                      <Button 
+                        onClick={() => addToCart(product)}
+                        className="w-full"
+                      >
+                        В корзину
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="calculator">
